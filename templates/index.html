@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskflow Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body class="bg-light">
+
+<div class="container mt-4">
+    <h2 class="text-center mb-4 text-primary">Taskflow API UI</h2>
+
+    <!-- AUTHENTICATION SECTION (Login & Sign Up) -->
+    <div id="auth-section" class="card mx-auto shadow-sm" style="max-width: 400px;">
+        <div class="card-header d-flex p-0">
+            <button class="btn btn-light w-50 rounded-0 fw-bold border-bottom border-primary" id="tab-login" onclick="switchTab('login')">Login</button>
+            <button class="btn btn-light w-50 rounded-0" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+        </div>
+        <div class="card-body">
+            <!-- Login Form -->
+            <div id="form-login">
+                <input type="text" id="log-username" class="form-control mb-2" placeholder="Username">
+                <input type="password" id="log-password" class="form-control mb-3" placeholder="Password">
+                <button onclick="login()" class="btn btn-primary w-100">Login</button>
+            </div>
+            
+            <!-- Sign Up Form (Hidden by default) -->
+            <div id="form-signup" style="display: none;">
+                <input type="text" id="reg-username" class="form-control mb-2" placeholder="Username">
+                <input type="password" id="reg-password" class="form-control mb-2" placeholder="Password">
+                <select id="reg-role" class="form-select mb-3">
+                    <option value="Member">Team Member</option>
+                    <option value="Manager">Manager</option>
+                </select>
+                <button onclick="register()" class="btn btn-success w-100">Register</button>
+            </div>
+            <p id="auth-message" class="text-center mt-2 fw-bold"></p>
+        </div>
+    </div>
+
+    <!-- DASHBOARD SECTION -->
+    <div id="dashboard-section" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 id="welcome-message" class="text-secondary m-0"></h5>
+            <div class="gap-2 d-flex">
+                <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#passwordModal">Change Password</button>
+                <button onclick="logout()" class="btn btn-outline-danger">Logout</button>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- LEFT COLUMN: PROJECTS -->
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-4 manager-only">
+                    <div class="card-header bg-primary text-white">Create Project</div>
+                    <div class="card-body">
+                        <form onsubmit="createProject(event)">
+                            <input type="text" id="proj-name" class="form-control mb-2" placeholder="Project Name" required>
+                            <textarea id="proj-desc" class="form-control mb-2" placeholder="Description"></textarea>
+                            <button type="submit" class="btn btn-sm btn-primary w-100">Add Project</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header">Your Projects</div>
+                    <ul id="project-list" class="list-group list-group-flush"></ul>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: TASKS -->
+            <div class="col-md-8">
+                <!-- Create Task Form -->
+                <div class="card shadow-sm mb-3 manager-only">
+                    <div class="card-header bg-success text-white">Create & Assign Task</div>
+                    <div class="card-body">
+                        <form onsubmit="createTask(event)" class="row g-2">
+                            <div class="col-12"><input type="text" id="task-title" class="form-control form-control-sm" placeholder="Task Title" required></div>
+                            <div class="col-4">
+                                <select id="task-project" class="form-select form-select-sm" required><option value="">Select Project...</option></select>
+                            </div>
+                            <div class="col-4">
+                                <select id="task-assignee" class="form-select form-select-sm"><option value="">Assign To...</option></select>
+                            </div>
+                            <div class="col-4"><input type="date" id="task-deadline" class="form-control form-control-sm"></div>
+                            <div class="col-12"><button type="submit" class="btn btn-sm btn-success w-100">Assign Task</button></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tasks Table -->
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Task Board</span>
+                        <button onclick="fetchTasks()" class="btn btn-sm btn-secondary">Refresh</button>
+                    </div>
+                    <div class="card-body p-0" style="overflow-x: auto;">
+                        <table class="table table-hover mb-0 text-center align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-start">Title</th>
+                                    <th>Assigned By</th>
+                                    <th>Assigned To</th>
+                                    <th>Status</th>
+                                    <th class="manager-only">Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody id="task-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal fade" id="passwordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="password" id="old-pwd" class="form-control mb-3" placeholder="Current Password">
+                <input type="password" id="new-pwd" class="form-control" placeholder="New Password">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="submitPasswordChange()">Save Password</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://127.0.0.1:8000/api';
+    let usersMap = {}; 
+    let teamMemberOptionsHTML = ''; 
+    let currentUser = null; 
+
+    window.onload = () => {
+        if (localStorage.getItem('access_token')) initDashboard();
+    };
+
+    function showMessage(msg, isError=false) {
+        const el = document.getElementById('auth-message');
+        el.className = isError ? 'text-danger text-center mt-2 fw-bold' : 'text-success text-center mt-2 fw-bold';
+        el.innerText = msg;
+    }
+
+    // --- AUTHENTICATION & SIGN UP ---
+    function switchTab(tab) {
+        document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('form-signup').style.display = tab === 'signup' ? 'block' : 'none';
+        document.getElementById('tab-login').className = tab === 'login' ? 'btn btn-light w-50 rounded-0 fw-bold border-bottom border-primary' : 'btn btn-light w-50 rounded-0';
+        document.getElementById('tab-signup').className = tab === 'signup' ? 'btn btn-light w-50 rounded-0 fw-bold border-bottom border-primary' : 'btn btn-light w-50 rounded-0';
+        document.getElementById('auth-message').innerText = '';
+    }
+
+    async function register() {
+        const res = await fetch(`${API_URL}/register/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: document.getElementById('reg-username').value,
+                password: document.getElementById('reg-password').value,
+                role: document.getElementById('reg-role').value
+            })
+        });
+
+        if (res.ok) {
+            showMessage("Registration successful! Please log in.");
+            switchTab('login');
+        } else {
+            const data = await res.json();
+            showMessage(JSON.stringify(data), true);
+        }
+    }
+
+    async function login() {
+        const res = await fetch(`${API_URL}/login/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: document.getElementById('log-username').value,
+                password: document.getElementById('log-password').value
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('access_token', data.access);
+            initDashboard();
+        } else {
+            showMessage("Invalid credentials", true);
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('access_token');
+        location.reload();
+    }
+
+    function getAuthHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        };
+    }
+
+    // --- DASHBOARD INIT ---
+    async function initDashboard() {
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('dashboard-section').style.display = 'block';
+        
+        // 1. Get current user info to setup UI permissions
+        const res = await fetch(`${API_URL}/me/`, { headers: getAuthHeaders() });
+        if (res.ok) {
+            currentUser = await res.json();
+            document.getElementById('welcome-message').innerText = `Logged in as: ${currentUser.role}`;
+            
+            // Hide manager-only panels if user is a member
+            if (currentUser.role === 'Member') {
+                document.querySelectorAll('.manager-only').forEach(el => el.style.display = 'none');
+            }
+            
+            fetchUsers();
+            fetchProjects();
+        } else {
+            logout();
+        }
+    }
+
+    // --- USERS ---
+    async function fetchUsers() {
+        const res = await fetch(`${API_URL}/users/`, { headers: getAuthHeaders() });
+        if (res.ok) {
+            const users = await res.json();
+            usersMap = {};
+            
+            // Filter only Team Members for the assignment dropdowns
+            const teamMembers = users.filter(u => u.role === 'Member');
+            teamMemberOptionsHTML = '<option value="">Unassigned</option>' + 
+                teamMembers.map(m => `<option value="${m.id}">${m.username}</option>`).join('');
+            
+            if (currentUser.role === 'Manager') {
+                document.getElementById('task-assignee').innerHTML = teamMemberOptionsHTML;
+            }
+
+            users.forEach(u => usersMap[u.id] = u.username);
+            fetchTasks(); 
+        }
+    }
+
+    // --- PROJECTS ---
+    async function fetchProjects() {
+        const res = await fetch(`${API_URL}/projects/`, { headers: getAuthHeaders() });
+        if (res.ok) {
+            const data = await res.json();
+            const projects = data.results || data;
+            
+            const list = document.getElementById('project-list');
+            list.innerHTML = projects.map(p => `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <b>${p.name}</b>
+                    ${currentUser.role === 'Manager' ? `<button onclick="deleteProject(${p.id})" class="btn btn-sm btn-outline-danger py-0 px-2">&times;</button>` : ''}
+                </li>
+            `).join('');
+            
+            document.getElementById('task-project').innerHTML = '<option value="">Select Project...</option>' + 
+                projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        }
+    }
+
+    async function createProject(e) {
+        e.preventDefault();
+        const body = { name: document.getElementById('proj-name').value, description: document.getElementById('proj-desc').value };
+        const res = await fetch(`${API_URL}/projects/`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(body) });
+        if (res.ok) { document.getElementById('proj-name').value = ''; fetchProjects(); }
+    }
+
+    async function deleteProject(id) {
+        if (!confirm("Delete project?")) return;
+        const res = await fetch(`${API_URL}/projects/${id}/`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (res.ok) { fetchProjects(); fetchTasks(); }
+    }
+
+    // --- TASKS ---
+    async function fetchTasks() {
+        const res = await fetch(`${API_URL}/tasks/`, { headers: getAuthHeaders() });
+        if (res.ok) {
+            const data = await res.json();
+            const tasks = data.results || data;
+            
+            document.getElementById('task-table-body').innerHTML = tasks.map(t => {
+                let badge = t.status === 'Done' ? 'bg-success' : (t.status === 'In Progress' ? 'bg-warning text-dark' : 'bg-secondary');
+                
+                // Assigned By is plain text
+                let assignedByName = t.assigned_by ? (usersMap[t.assigned_by] || 'Manager') : 'Unknown';
+                
+                // Assigned To: Dropdown for managers, plain text for members
+                let assignedToCol;
+                if (currentUser.role === 'Manager') {
+                    // Replace 'selected' dynamically based on current assignee
+                    let dynamicDropdown = teamMemberOptionsHTML.replace(
+                        `value="${t.assigned_to}"`, `value="${t.assigned_to}" selected`
+                    );
+                    assignedToCol = `<select class="form-select form-select-sm" onchange="updateTaskField(${t.id}, 'assigned_to', this.value)">${dynamicDropdown}</select>`;
+                } else {
+                    assignedToCol = t.assigned_to ? (usersMap[t.assigned_to] || 'Unknown') : 'Unassigned';
+                }
+
+                return `<tr>
+                    <td class="text-start fw-bold">${t.title}</td>
+                    <td><small class="text-muted">${assignedByName}</small></td>
+                    <td>${assignedToCol}</td>
+                    <td>
+                        <select class="form-select form-select-sm w-auto mx-auto" onchange="updateTaskField(${t.id}, 'status', this.value)">
+                            <option value="To Do" ${t.status === 'To Do' ? 'selected' : ''}>To Do</option>
+                            <option value="In Progress" ${t.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Done" ${t.status === 'Done' ? 'selected' : ''}>Done</option>
+                        </select>
+                    </td>
+                    ${currentUser.role === 'Manager' ? `<td><button onclick="deleteTask(${t.id})" class="btn btn-sm btn-danger py-0 px-2">X</button></td>` : ''}
+                </tr>`;
+            }).join('');
+        }
+    }
+
+    async function createTask(e) {
+        e.preventDefault();
+        const body = {
+            title: document.getElementById('task-title').value,
+            project: document.getElementById('task-project').value,
+            status: 'To Do',
+            assigned_to: document.getElementById('task-assignee').value || null,
+            deadline: document.getElementById('task-deadline').value || null
+        };
+        const res = await fetch(`${API_URL}/tasks/`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(body) });
+        if (res.ok) { document.getElementById('task-title').value = ''; fetchTasks(); }
+    }
+
+    // Generic updater for both status and assignments
+    async function updateTaskField(taskId, fieldName, newValue) {
+        let payload = {};
+        payload[fieldName] = newValue === "" ? null : newValue;
+
+        const res = await fetch(`${API_URL}/tasks/${taskId}/`, { 
+            method: 'PATCH', 
+            headers: getAuthHeaders(), 
+            body: JSON.stringify(payload) 
+        });
+        
+        if (res.ok) fetchTasks(); 
+        else alert("Permission Denied.");
+    }
+
+    async function deleteTask(id) {
+        if (!confirm("Delete task?")) return;
+        const res = await fetch(`${API_URL}/tasks/${id}/`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (res.ok) fetchTasks();
+    }
+
+    // --- CHANGE PASSWORD ---
+    async function submitPasswordChange() {
+        const old_password = document.getElementById('old-pwd').value;
+        const new_password = document.getElementById('new-pwd').value;
+        if (!old_password || !new_password) return alert("Fill in both fields.");
+
+        const res = await fetch(`${API_URL}/change-password/`, {
+            method: 'POST', headers: getAuthHeaders(),
+            body: JSON.stringify({ old_password, new_password })
+        });
+
+        if (res.ok) {
+            alert("Password changed. Please log in again.");
+            logout();
+        } else {
+            alert("Failed to change password. Check current password.");
+        }
+    }
+</script>
+</body>
+</html>
